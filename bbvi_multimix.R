@@ -1,5 +1,13 @@
 require(mvtnorm)
 
+#' Cartesian Product of Indices
+#' 
+#' For use in naming parameters when initializing the method.
+#'
+#' @param seq1 A sequence of indices
+#' @param seq2 A sequence of indices
+#' 
+#' @return An array of strings containing cartesian products of seq1 and seq2
 cartesian_index <- function(seq1, seq2){
     combs <- expand.grid(seq1,seq2)
     sapply(1:nrow(combs), function(x){
@@ -7,6 +15,16 @@ cartesian_index <- function(seq1, seq2){
     })
 }
 
+#' Unpack List of Prior Distributions
+#' 
+#' For use in initializing the method.
+#'
+#' @param priors a list of prior specifications
+#' @param K the number of mixture components
+#' @param p the dimension of the Gaussian distributions
+#' @param N the number of observations
+#' 
+#' @return An updated list of prior specifications, completed in case of missing priors
 unpack_priors <- function(priors, K, p, N){
     
     if(is.null(priors[["m0"]])){
@@ -28,7 +46,31 @@ unpack_priors <- function(priors, K, p, N){
     return(priors)
 }
 
-bbvi_multimix <- function(data, clusters = 2, method = "Naive", learn_rate = rate_constant(), max_iter = 1000, mc_size = 1000, priors = NULL, seed = 923,
+#' Fit a Multivariate Mixture of Gaussian Using  BBVI
+#' 
+#' Fits a set of K (pre-specified) components each a p-dimensional Gaussian distribution to a dataset.
+#' The method used Black Box Variational Inference using either its Naive, Rao-Blackwellized, or James-Stein
+#' flavor.
+#'
+#' @param data an N x p matrix of observations
+#' @param clusters the number K of components
+#' @param method the flavor of BBVI to use in model fitting. Can be one of method = c("Naive","RB","JS+") for
+#' the Naive, Rao-Blackwellized, and James-Stein flavor, respectively. Defaults to method = "Naive"
+#' @param learn_rate the learning rate to use for the stochastic optimization. Can be rate_constant(rho) for a
+#' certain value of rho, rate_adagrad(eta) for a value of eta to use the AdaGrad method, and rate_rmsprop(eta, beta)
+#' for the RMSProp modification of AdaGrad. Defaults to rate_constant(1e-3)
+#' @param max_iter the total number of iterations to stop the method in case of non-convergence
+#' @param min_iter the minimum number of iterations to perform before convergence is assessed
+#' @param mc_size the number S of monte carlo samples to draw for generating the BBVI Update steps
+#' @param priors a list of prior specifications, defaults to standard priors if priors = NULL.
+#' @param converge the convergence threshold delta
+#' @param criterion the criterion in which to test for convergence, can be one of criterion = c("param","elbo").
+#' @param var_threshold the lower and upper threshold on the variance, defaults to var_threshold = c(0.01, 1e3).
+#' @param verbose logical, a switch for whether a verbose execution should be done.
+#' @param seed the seed to use for starting the random samples
+#' 
+#' @return An updated list of prior specifications, completed in case of missing priors
+bbvi_multimix <- function(data, clusters = 2, method = "Naive", learn_rate = rate_constant(), mc_size = 1000, max_iter = 1000, min_iter = 1, priors = NULL, seed = 923,
                             converge = 1e-4, crit = "param", var_threshold = c(0.01, 1e3), verbose = FALSE){
     p <- ncol(data) # number of components in the data
     N <- nrow(data) # number of rows in the data
@@ -61,7 +103,7 @@ bbvi_multimix <- function(data, clusters = 2, method = "Naive", learn_rate = rat
 
     params[[1]] <- data.frame(t(c(
         as.vector(init_locs),
-        rep(10, times = length(var_params)),
+        rep(1, times = length(var_params)),
         rep(1/K, times = length(prob_params))
     )))
 
@@ -122,16 +164,16 @@ bbvi_multimix <- function(data, clusters = 2, method = "Naive", learn_rate = rat
 
         # check for convergence
         if (t > 2){
-            elbo.chg <- (samps$ELBO - elbo[[t-1]]$elbo[1])/abs(elbo[[t-1]]$elbo[1])
+            elbo.chg <- log(abs(samps$ELBO/elbo[[t-1]]$elbo[1]))
         }else{
             elbo.chg <- 1.0000
         }
         
-        norm_old <- sum(old.params^2)
+        norm_old <- sum(old.params[1,]^2)
         norm_chg <- sum((new.params[1,] - old.params[1,])^2)
         lambda <- sqrt(norm_chg)/sqrt(norm_old)
 
-        if((crit == "param" & lambda < converge) | crit == "elbo" & elbo.chg < converge){
+        if((t > min_iter & crit == "param" & lambda < converge) | (t > min_iter & crit == "elbo" & elbo.chg < converge)){
             message(paste0("Algorithm converged after ", t, " iterations."))
             converged <- TRUE
             params[(t+1):max_iter] <- NULL
@@ -436,6 +478,21 @@ positive <- function(arr){
     })
 }
 
+
+#' Unpack All Parameters From Array Form
+#' 
+#' In general the algorithm represents all parameters in the algorithm in a single array.
+#' The following function unpacks them into their correct form, i.e. a K x p matrix for
+#' the cluster centroids, an N x K matrix for the component probabilities per observation,
+#' and a list of p x p (diagonal) matrices for the variance-covariance matrix of the
+#' multivariate normal distributions on mu.
+#'
+#' @param params A named horizontal array of parameter values
+#' @param N the number of observations
+#' @param K the number of components in the mixture distribution
+#' @param p the number of dimensions of the multivariate normal distributions
+#' 
+#' @return The same length array, with negative values coerced to zero
 unpack_parameters <- function(params, N, K, p){
     phi <- as.numeric(params[,grepl("phi_",colnames(params))])
     phi <- matrix(phi, nrow = N, ncol = K, byrow = FALSE)
@@ -600,7 +657,8 @@ rate_adagrad <- function(eta = 1, ...){
 #' 
 #' Returns a function to use as a learning rate for the BBVI Update Steps
 #'
-#' @param eta The tuning parameter eta for performing AdaGrad
+#' @param eta The tuning parameter eta for performing RMSProp
+#' @param beta The tuning parameter for decay in performing RMSProp
 #' 
 #' @return Returns a function that the BBVI Update step uses for updating parameters
 rate_rmsprop <- function(eta = 1, beta = 0.9, ...){
@@ -616,6 +674,15 @@ rate_rmsprop <- function(eta = 1, beta = 0.9, ...){
     return(rate_function)
 }
 
+#' Plot A Bivariate Mixture of Gaussian
+#' 
+#' Plots the data used to train the multivariate gaussian mixture using BBVI.
+#' Note that this only works for bivariate normal distributions.
+#'
+#' @param bbvi The object outputted by multimix_bbvi
+#' 
+#' @return Plots the scatter of observations, with a super-imposed contour plot of the
+#' resulting densities of the mixing distributions.
 plot_multimix <- function(bbvi){
     N <- bbvi$N 
     K <- bbvi$K 
@@ -640,6 +707,15 @@ plot_multimix <- function(bbvi){
     }
 }
 
+#' Summary Mixtures of the BBVI Results
+#' 
+#' Returns a table of performance measures on the BBVI runs used for the update step.
+#'
+#' @param bbvi The object outputted by multimix_bbvi
+#' 
+#' @return A dataframe containing the number of iterations, time (in minutes),
+#' expected predictive log-likelihood (elpd), and DIC of the resulting multivariate
+#' mixture model.
 summary_multimix <- function(bbvi){
     N <- bbvi$N 
     K <- bbvi$K 
@@ -662,6 +738,17 @@ summary_multimix <- function(bbvi){
     return(performance_data)
 }
 
+#' Log-Likelihood of Simulated Parameters
+#' 
+#' For use during sampling. Takes in a random sample of parameters mu and z as computes for
+#' the log-likelihood of the data.
+#'
+#' @param data An N x p matrix of observations for fitting the multivariate mixture model
+#' @param mu A K x p matrix of means for the K components and their locations in p dimensions
+#' @param z An N x K matrix of assignments for each observation to the K mixing components
+#' @param priors A list of prior distributions (and assumptions)
+#' 
+#' @return The data log-likelihood for the given simulated parameters.
 sim.logLik <- function(data, mu, z, priors){
     N = nrow(data)
     p = ncol(data)
@@ -682,6 +769,17 @@ sim.logLik <- function(data, mu, z, priors){
     return(logp)
 }
 
+#' Log-Likelihood of Average Parameters
+#' 
+#' For use during sampling. Takes in the posterior mean values of mu and phi and computes
+#' for the data log-likelihood.
+#'
+#' @param data An N x p matrix of observations for fitting the multivariate mixture model
+#' @param mu A K x p matrix of means for the K components and their locations in p dimensions
+#' @param phi An N x K matrix of probabilities for each observation to the K mixing components
+#' @param priors A list of prior distributions (and assumptions)
+#' 
+#' @return The data log-likelihood for the given posterior average parameters.
 bayes.logLik <- function(data, mu, phi, priors){
     N = nrow(data)
     p = ncol(data)
