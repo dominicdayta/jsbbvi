@@ -1,0 +1,118 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{Ranganath-2014}
+\citation{Blei-2017}
+\citation{Blei-2017}
+\citation{Blei-2017}
+\providecommand \oddpage@label [2]{}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\citation{Ranganath-2014}
+\citation{Goodfellow-2016}
+\citation{Blei-2017}
+\citation{Ranganath-2014}
+\citation{Casella-1996}
+\citation{Blei-2017}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Preliminaries}{2}{section.2}\protected@file@percent }
+\newlabel{sec:bbvi}{{2}{2}{Preliminaries}{section.2}{}}
+\newlabel{eq:kullback}{{1}{2}{Preliminaries}{equation.2.1}{}}
+\newlabel{eq:elbo}{{2}{2}{Preliminaries}{equation.2.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Black Box Variational Inference}{2}{subsection.2.1}\protected@file@percent }
+\newlabel{eq:elbograd}{{3}{2}{Black Box Variational Inference}{equation.2.3}{}}
+\newlabel{eq:naivebbvi}{{4}{2}{Black Box Variational Inference}{equation.2.4}{}}
+\citation{Blei-2017}
+\citation{Saul-1995,Barber-1998}
+\citation{Bishop-1997}
+\citation{Pearl-1988}
+\citation{Ranganath-2014}
+\citation{Welandawe-2022}
+\citation{Domke-2020}
+\citation{Xu-2019}
+\citation{Kingma-2013,Rezende-2014}
+\citation{Welandawe-2022}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Variance Control Using Rao-Blackwellization}{3}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Related Work}{3}{subsection.2.3}\protected@file@percent }
+\citation{Koloskova-2023,Goodfellow-2016}
+\citation{Lehmann-1998}
+\citation{Xu-2019}
+\citation{Ranganath-2014}
+\citation{Lehmann-1998,Efron-1973}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Variance Control Using The James-Stein Estimator}{4}{section.3}\protected@file@percent }
+\newlabel{sec:stein}{{3}{4}{Variance Control Using The James-Stein Estimator}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Gradient Ascent As Estimation}{4}{subsection.3.1}\protected@file@percent }
+\newlabel{eq:sgd}{{6}{4}{Gradient Ascent As Estimation}{equation.3.6}{}}
+\newlabel{asm:normal}{{1}{4}{}{assumption.1}{}}
+\citation{Lehmann-1998}
+\citation{Efron-1973}
+\newlabel{thm:jsteinplus}{{2}{5}{Positive Part James-Stein Estimator}{theorem.2}{}}
+\newlabel{alg:bbvi-js}{{1}{5}{Gradient Ascent As Estimation}{algocfline.1}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {1}{\ignorespaces Positive-Part James-Stein BBVI (BBVI-JS+)}}{5}{algocf.1}\protected@file@percent }
+\newlabel{thm:varcontrol1}{{3}{5}{Variance Reduction of the James-Stein Estimator}{theorem.3}{}}
+\newlabel{thm:varcontrol2}{{4}{5}{}{theorem.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Relationship to Gradient Clipping}{6}{subsection.3.2}\protected@file@percent }
+\newlabel{sec:gradclip}{{3.2}{6}{Relationship to Gradient Clipping}{subsection.3.2}{}}
+\citation{Efron-1973}
+\citation{Garnett-2023}
+\citation{Li-2019}
+\citation{Ranganath-2014}
+\citation{Robbins-1951}
+\citation{Duchi-2011,Goodfellow-2016}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces  Relationship between gradient clipping and the James-Stein estimator. Gradient clipping $G_c$ preserves values of the gradient only up to $|| f ||^2 \leq c$. The Positive Part James-Stein operator $JS+$ penalizes $||f||^2$ for being close to $c$ and forces it towards zero.}}{7}{figure.1}\protected@file@percent }
+\newlabel{fig:clip}{{1}{7}{Relationship between gradient clipping and the James-Stein estimator. Gradient clipping $G_c$ preserves values of the gradient only up to $|| f ||^2 \leq c$. The Positive Part James-Stein operator $JS+$ penalizes $||f||^2$ for being close to $c$ and forces it towards zero}{figure.1}{}}
+\newlabel{eq:clip}{{8}{7}{Relationship to Gradient Clipping}{equation.3.8}{}}
+\citation{Goodfellow-2016}
+\citation{FCPS}
+\citation{Bishop-2006}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Further Extensions}{8}{subsection.3.3}\protected@file@percent }
+\newlabel{sec:extend}{{3.3}{8}{Further Extensions}{subsection.3.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Experiments}{8}{section.4}\protected@file@percent }
+\newlabel{sec:gausmix}{{4}{8}{Experiments}{section.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces  Resulting estimator variances from the Gaussian Mixture experiment with $K = 2$ to $10$ components. BBVI-JS+ produces controlled variances in its sampling distribution for the ELBO gradient compared to BBVI-Naive, but relative to BBVI-RB still grows with the number of parameters. Interestingly, BBVI-RB+ provides even stricter variance control over BBVI-RB.}}{8}{figure.2}\protected@file@percent }
+\newlabel{fig:variances}{{2}{8}{Resulting estimator variances from the Gaussian Mixture experiment with $K = 2$ to $10$ components. BBVI-JS+ produces controlled variances in its sampling distribution for the ELBO gradient compared to BBVI-Naive, but relative to BBVI-RB still grows with the number of parameters. Interestingly, BBVI-RB+ provides even stricter variance control over BBVI-RB}{figure.2}{}}
+\citation{FCPS}
+\bibstyle{unsrtnat}
+\bibdata{bbvi}
+\bibcite{Barber-1998}{{1}{}{{}}{{}}}
+\bibcite{Bishop-1997}{{2}{}{{}}{{}}}
+\bibcite{Bishop-2006}{{3}{}{{}}{{}}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Time to convergence and fit criteria of Rao-Blackwellized and James-Stein BBVI in three benchmark datasets. For each run, we force the algorithm to take at least 100 iterations before assessing convergence to allow ample warm-up. Due to the differing magnitudes of the gradients, the parameter $\eta $ for RMSProp between the Rao-Blackwellized and James-Stein have been adjusted.}}{9}{table.1}\protected@file@percent }
+\newlabel{tab:benchmarks}{{1}{9}{Time to convergence and fit criteria of Rao-Blackwellized and James-Stein BBVI in three benchmark datasets. For each run, we force the algorithm to take at least 100 iterations before assessing convergence to allow ample warm-up. Due to the differing magnitudes of the gradients, the parameter $\eta $ for RMSProp between the Rao-Blackwellized and James-Stein have been adjusted}{table.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Conclusions}{9}{section.5}\protected@file@percent }
+\bibcite{Blei-2017}{{4}{}{{}}{{}}}
+\bibcite{Casella-1996}{{5}{}{{}}{{}}}
+\bibcite{Domke-2020}{{6}{}{{}}{{}}}
+\bibcite{Duchi-2011}{{7}{}{{}}{{}}}
+\bibcite{Efron-1973}{{8}{}{{}}{{}}}
+\bibcite{Garnett-2023}{{9}{}{{}}{{}}}
+\bibcite{Goodfellow-2016}{{10}{}{{}}{{}}}
+\bibcite{Kingma-2013}{{11}{}{{}}{{}}}
+\bibcite{Koloskova-2023}{{12}{}{{}}{{}}}
+\bibcite{Lehmann-1998}{{13}{}{{}}{{}}}
+\bibcite{Li-2019}{{14}{}{{}}{{}}}
+\bibcite{FCPS}{{15}{}{{}}{{}}}
+\bibcite{Pearl-1988}{{16}{}{{}}{{}}}
+\bibcite{Ranganath-2014}{{17}{}{{}}{{}}}
+\bibcite{Rezende-2014}{{18}{}{{}}{{}}}
+\bibcite{Robbins-1951}{{19}{}{{}}{{}}}
+\bibcite{Saul-1995}{{20}{}{{}}{{}}}
+\bibcite{Welandawe-2022}{{21}{}{{}}{{}}}
+\bibcite{Xu-2019}{{22}{}{{}}{{}}}
+\citation{Ranganath-2014}
+\citation{Ranganath-2014}
+\@writefile{toc}{\contentsline {section}{\numberline {A}Algorithm Listings}{11}{appendix.A}\protected@file@percent }
+\newlabel{sec:algorithms}{{A}{11}{Algorithm Listings}{appendix.A}{}}
+\newlabel{alg:bbvi}{{2}{11}{Algorithm Listings}{algocfline.2}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {2}{\ignorespaces Naive Black Box Variational Inference (BBVI-Naive) \cite  {Ranganath-2014}}}{11}{algocf.2}\protected@file@percent }
+\newlabel{alg:bbvi-rb}{{3}{11}{Algorithm Listings}{algocfline.3}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {3}{\ignorespaces Rao-Blackwellized BBVI (BBVI-RB) \cite  {Ranganath-2014}}}{11}{algocf.3}\protected@file@percent }
+\citation{FCPS}
+\citation{FCPS}
+\citation{FCPS}
+\citation{Ranganath-2014,Welandawe-2022}
+\providecommand\NAT@force@numbers{}\NAT@force@numbers
+\@writefile{toc}{\contentsline {section}{\numberline {B}Experimental Setup}{12}{appendix.B}\protected@file@percent }
+\newlabel{sec:experiments}{{B}{12}{Experimental Setup}{appendix.B}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces  Scatterplots of benchmark datasets from the \texttt  {FCPS} package \cite  {FCPS}. From left to right: EngyTime, Lsun3D, and Tetra.}}{12}{figure.3}\protected@file@percent }
+\newlabel{fig:benchmarks}{{3}{12}{Scatterplots of benchmark datasets from the \texttt {FCPS} package \cite {FCPS}. From left to right: EngyTime, Lsun3D, and Tetra}{figure.3}{}}
+\gdef \@abspage@last{12}

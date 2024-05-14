@@ -1,0 +1,273 @@
+
+@InProceedings{Ranganath-2014,
+  title = 	 {{Black Box Variational Inference}},
+  author = 	 {Ranganath, Rajesh and Gerrish, Sean and Blei, David},
+  booktitle = 	 {Proceedings of the Seventeenth International Conference on Artificial Intelligence and Statistics},
+  pages = 	 {814--822},
+  year = 	 {2014},
+  editor = 	 {Kaski, Samuel and Corander, Jukka},
+  volume = 	 {33},
+  series = 	 {Proceedings of Machine Learning Research},
+  address = 	 {Reykjavik, Iceland},
+  month = 	 {22--25 Apr},
+  publisher =    {PMLR},
+  pdf = 	 {http://proceedings.mlr.press/v33/ranganath14.pdf},
+  url = 	 {https://proceedings.mlr.press/v33/ranganath14.html},
+  abstract = 	 {Variational inference has become a widely used method to approximate posteriors in complex latent variables models.  However, deriving a variational inference algorithm generally requires significant model-specific analysis. These efforts can hinder and deter us from quickly developing and exploring a variety of models for a problem at hand.  In this paper, we present a “black box” variational inference algorithm, one that can be quickly applied to many models with little additional derivation.  Our method is based on a stochastic optimization of the variational objective where the noisy gradient is computed from Monte Carlo samples from the variational distribution.  We develop a number of methods to reduce the variance of the gradient, always maintaining the criterion that we want to avoid difficult model-based derivations.  We evaluate our method against the corresponding black box sampling based methods. We find that our method reaches better predictive likelihoods much faster than sampling methods. Finally, we demonstrate that Black Box Variational Inference lets us easily explore a wide space of models by quickly constructing and evaluating several models of longitudinal healthcare data.}
+}
+
+@article{Blei-2017,
+    author = {Blei, David M. and Kucukelbir, Alp and McAuliffe, Jon D.},
+    title = {Variational Inference: A Review for Statisticians},
+    journal = {Journal of the American Statistical Association},
+    volume = {112},
+    number = {518},
+    pages = {859--877},
+    year = {2017},
+    publisher = {Taylor \& Francis},
+    doi = {10.1080/01621459.2017.1285773},
+    URL = {     
+            https://doi.org/10.1080/01621459.2017.1285773
+    },
+    eprint = { 
+            https://doi.org/10.1080/01621459.2017.1285773
+    }
+}
+
+@book{Goodfellow-2016,
+    title={Deep Learning},
+    author={Ian Goodfellow and Yoshua Bengio and Aaron Courville},
+    publisher={MIT Press},
+    note={\url{http://www.deeplearningbook.org}},
+    year={2016}
+}
+
+@article{Casella-1996,
+ ISSN = {00063444},
+ URL = {http://www.jstor.org/stable/2337434},
+ abstract = {This paper proposes a post-simulation improvement for two common Monte Carlo methods, the Accept-Reject and Metropolis algorithms. The improvement is based on a Rao-Blackwellisation method that integrates over the uniform random variables involved in the algorithms, and thus post-processes the standard estimators. We show how the Rao-Blackwellised versions of these algorithms can be implemented and, through examples, illustrate the improvement in variance brought by these new procedures. We also compare the improved version of the Metropolis algorithm with ordinary and Rao-Blackwellised importance sampling procedures for independent and general Metropolis set-ups.},
+ author = {George Casella and Christian P. Robert},
+ journal = {Biometrika},
+ number = {1},
+ pages = {81--94},
+ publisher = {[Oxford University Press, Biometrika Trust]},
+ title = {Rao-Blackwellisation of Sampling Schemes},
+ urldate = {2024-04-23},
+ volume = {83},
+ year = {1996}
+}
+
+@Book{Lehmann-1998,
+  Title = {Theory of Point Estimation},
+  Author = {Erich L. Lehmann and George Casella},
+  Publisher = {Springer-Verlag},
+  Year = {1998},
+  Address = {New York, NY, USA},
+  Edition = {Second}
+}
+
+@article{Efron-1973,
+ ISSN = {01621459},
+ URL = {http://www.jstor.org/stable/2284155},
+ abstract = {Stein's estimator for k normal means is known to dominate the MLE if k ≥ 3. In this article we ask if Stein's estimator is any good in its own right. Our answer is yes: the positive part version of Stein's estimator is one member of a class of "good" rules that have Bayesian properties and also dominate the MLE. Other members of this class are also useful in various situations. Our approach is by means of empirical Bayes ideas. In the later sections we discuss rules for more complicated estimation problems, and conclude with results from empirical linear Bayes rules in non-normal cases.},
+ author = {Bradley Efron and Carl Morris},
+ journal = {Journal of the American Statistical Association},
+ number = {341},
+ pages = {117--130},
+ publisher = {[American Statistical Association, Taylor & Francis, Ltd.]},
+ title = {Stein's Estimation Rule and Its Competitors--An Empirical Bayes Approach},
+ urldate = {2024-04-23},
+ volume = {68},
+ year = {1973}
+}
+
+@misc{Kingma-2013,
+    Author = {Diederik P Kingma and Max Welling},
+    Title = {Auto-Encoding Variational Bayes},
+    Year = {2013},
+    Eprint = {arXiv:1312.6114},
+}
+
+@InProceedings{Rezende-2014,
+  title = 	 {Stochastic Backpropagation and Approximate Inference in Deep Generative Models},
+  author = 	 {Rezende, Danilo Jimenez and Mohamed, Shakir and Wierstra, Daan},
+  booktitle = 	 {Proceedings of the 31st International Conference on Machine Learning},
+  pages = 	 {1278--1286},
+  year = 	 {2014},
+  editor = 	 {Xing, Eric P. and Jebara, Tony},
+  volume = 	 {32},
+  number =       {2},
+  series = 	 {Proceedings of Machine Learning Research},
+  address = 	 {Bejing, China},
+  month = 	 {22--24 Jun},
+  publisher =    {PMLR},
+  pdf = 	 {http://proceedings.mlr.press/v32/rezende14.pdf},
+  url = 	 {https://proceedings.mlr.press/v32/rezende14.html},
+  abstract = 	 {We marry ideas from deep neural networks and approximate Bayesian inference to derive a generalised class of deep, directed generative models, endowed with a new algorithm for scalable inference and learning.   Our algorithm introduces a recognition model to represent an approximate posterior distribution and uses this for optimisation of a variational lower bound.  We develop stochastic backpropagation – rules for gradient backpropagation through stochastic variables – and   derive an algorithm that allows for joint optimisation of the parameters of both the generative and recognition models.  We demonstrate on several real-world data sets that by using stochastic backpropagation and variational inference, we obtain models that are able to  generate realistic samples of data, allow for accurate imputations of missing data, and provide a useful tool for high-dimensional data visualisation.}
+}
+
+@misc{Welandawe-2022,
+    Author = {Manushi Welandawe and Michael Riis Andersen and Aki Vehtari and Jonathan H. Huggins},
+    Title = {Robust, Automated, and Accurate Black-box Variational Inference},
+    Year = {2022},
+    Eprint = {arXiv:2203.15945}
+}
+
+@InProceedings{Domke-2020,
+  title = 	 {Provable Smoothness Guarantees for Black-Box Variational Inference},
+  author =       {Domke, Justin},
+  booktitle = 	 {Proceedings of the 37th International Conference on Machine Learning},
+  pages = 	 {2587--2596},
+  year = 	 {2020},
+  editor = 	 {III, Hal Daumé and Singh, Aarti},
+  volume = 	 {119},
+  series = 	 {Proceedings of Machine Learning Research},
+  month = 	 {13--18 Jul},
+  publisher =    {PMLR},
+  pdf = 	 {http://proceedings.mlr.press/v119/domke20a/domke20a.pdf},
+  url = 	 {https://proceedings.mlr.press/v119/domke20a.html},
+  abstract = 	 {Black-box variational inference tries to approximate a complex target distribution through a gradient-based optimization of the parameters of a simpler distribution. Provable convergence guarantees require structural properties of the objective. This paper shows that for location-scale family approximations, if the target is M-Lipschitz smooth, then so is the “energy” part of the variational objective. The key proof idea is to describe gradients in a certain inner-product space, thus permitting the use of Bessel’s inequality. This result gives bounds on the location of the optimal parameters, and is a key ingredient for convergence guarantees.}
+}
+
+
+@InProceedings{Xu-2019,
+  title = 	 {Variance reduction properties of the reparameterization trick},
+  author =       {Xu, Ming and Quiroz, Matias and Kohn, Robert and Sisson, Scott A.},
+  booktitle = 	 {Proceedings of the Twenty-Second International Conference on Artificial Intelligence and Statistics},
+  pages = 	 {2711--2720},
+  year = 	 {2019},
+  editor = 	 {Chaudhuri, Kamalika and Sugiyama, Masashi},
+  volume = 	 {89},
+  series = 	 {Proceedings of Machine Learning Research},
+  month = 	 {16--18 Apr},
+  publisher =    {PMLR},
+  pdf = 	 {http://proceedings.mlr.press/v89/xu19a/xu19a.pdf},
+  url = 	 {https://proceedings.mlr.press/v89/xu19a.html},
+  abstract = 	 {The reparameterization trick is widely used in variational inference as it yields more accurate estimates of the gradient of the variational objective than alternative approaches such as the score function method. Although there is overwhelming empirical evidence in the literature showing its success, there is relatively little research exploring why the reparameterization trick is so effective. We explore this under the idealized assumptions that the variational approximation is a mean-field Gaussian density and that the log of the joint density of the model parameters and the data is a quadratic function that depends on the variational mean. From this, we show that the marginal variances of the reparameterization gradient estimator are smaller than those of the score function gradient estimator. We apply the result of our idealized analysis to real-world examples.}
+}
+
+@misc{Koloskova-2023,
+    Author = {Anastasia Koloskova and Hadrien Hendrikx and Sebastian U. Stich},
+    Title = {Revisiting Gradient Clipping: Stochastic bias and tight convergence guarantees},
+    Year = {2023},
+    Eprint = {arXiv:2305.01588}
+}
+
+@inproceedings{Liu-2016,
+ author = {Liu, Qiang and Wang, Dilin},
+ booktitle = {Advances in Neural Information Processing Systems},
+ editor = {D. Lee and M. Sugiyama and U. Luxburg and I. Guyon and R. Garnett},
+ pages = {},
+ publisher = {Curran Associates, Inc.},
+ title = {Stein Variational Gradient Descent: A General Purpose Bayesian Inference Algorithm},
+ url = {https://proceedings.neurips.cc/paper_files/paper/2016/file/b3ba8f1bee1238a2f37603d90b58898d-Paper.pdf},
+ volume = {29},
+ year = {2016}
+}
+
+@inproceedings{Barber-1998,
+ author = {Barber, David and Wiegerinck, Wim},
+ booktitle = {Advances in Neural Information Processing Systems},
+ editor = {M. Kearns and S. Solla and D. Cohn},
+ pages = {},
+ publisher = {MIT Press},
+ title = {Tractable Variational Structures for Approximating Graphical Models},
+ url = {https://proceedings.neurips.cc/paper_files/paper/1998/file/297fa7777981f402dbba17e9f29e292d-Paper.pdf},
+ volume = {11},
+ year = {1998}
+}
+
+@inproceedings{Saul-1995,
+ author = {Saul, Lawrence and Jordan, Michael},
+ booktitle = {Advances in Neural Information Processing Systems},
+ editor = {D. Touretzky and M.C. Mozer and M. Hasselmo},
+ pages = {},
+ publisher = {MIT Press},
+ title = {Exploiting Tractable Substructures in Intractable Networks},
+ url = {https://proceedings.neurips.cc/paper_files/paper/1995/file/285f89b802bcb2651801455c86d78f2a-Paper.pdf},
+ volume = {8},
+ year = {1995}
+}
+
+@inproceedings{Bishop-1997,
+ author = {Bishop, Christopher and Lawrence, Neil and Jaakkola, Tommi and Jordan, Michael},
+ booktitle = {Advances in Neural Information Processing Systems},
+ editor = {M. Jordan and M. Kearns and S. Solla},
+ pages = {},
+ publisher = {MIT Press},
+ title = {Approximating Posterior Distributions in Belief Networks Using Mixtures},
+ url = {https://proceedings.neurips.cc/paper_files/paper/1997/file/c0826819636026dd1f3674774f06c51d-Paper.pdf},
+ volume = {10},
+ year = {1997}
+}
+
+@book{Pearl-1988,
+    author = {Pearl, Judea},
+    title = {Probabilistic Reasoning in Intelligent Systems: Networks of Plausible Inference},
+    year = {1988},
+    isbn = {1558604790},
+    publisher = {Morgan Kaufmann Publishers Inc.},
+    address = {San Francisco, CA, USA},
+    abstract = {From the Publisher: Probabilistic Reasoning in Intelligent Systems is a complete andaccessible account of the theoretical foundations and computational methods that underlie plausible reasoning under uncertainty. The author provides a coherent explication of probability as a language for reasoning with partial belief and offers a unifying perspective on other AI approaches to uncertainty, such as the Dempster-Shafer formalism, truth maintenance systems, and nonmonotonic logic. The author distinguishes syntactic and semantic approaches to uncertaintyand offers techniques, based on belief networks, that provide a mechanism for making semantics-based systems operational. Specifically, network-propagation techniques serve as a mechanism for combining the theoretical coherence of probability theory with modern demands of reasoning-systems technology: modular declarative inputs, conceptually meaningful inferences, and parallel distributed computation. Application areas include diagnosis, forecasting, image interpretation, multi-sensor fusion, decision support systems, plan recognition, planning, speech recognitionin short, almost every task requiring that conclusions be drawn from uncertain clues and incomplete information. Probabilistic Reasoning in Intelligent Systems will be of special interest to scholars and researchers in AI, decision theory, statistics, logic, philosophy, cognitive psychology, and the management sciences. Professionals in the areas of knowledge-based systems, operations research, engineering, and statistics will find theoretical and computational tools of immediate practical use. The book can also be used as an excellent text for graduate-level courses in AI, operations research, or applied probability.}
+}
+
+@inproceedings{Li-2019,
+  author    = {Michael Y. Li and Ryan P. Adams},
+  title     = {Explainability Constraints for Bayesian Optimization},
+  booktitle = {6th ICML Workshop on Automated Machine Learning},
+  year      = {2019}
+}
+
+@book{Garnett-2023, 
+    place={Cambridge}, 
+    title={Bayesian Optimization}, 
+    publisher={Cambridge University Press}, 
+    author={Garnett, Roman}, 
+    year={2023}
+}
+
+@article{Robbins-1951,
+    author = {Herbert Robbins and Sutton Monro},
+    title = {{A Stochastic Approximation Method}},
+    volume = {22},
+    journal = {The Annals of Mathematical Statistics},
+    number = {3},
+    publisher = {Institute of Mathematical Statistics},
+    pages = {400 -- 407},
+    year = {1951},
+    doi = {10.1214/aoms/1177729586},
+    URL = {https://doi.org/10.1214/aoms/1177729586}
+}
+
+@article{Duchi-2011,
+  author  = {John Duchi and Elad Hazan and Yoram Singer},
+  title   = {Adaptive Subgradient Methods for Online Learning and Stochastic Optimization},
+  journal = {Journal of Machine Learning Research},
+  year    = {2011},
+  volume  = {12},
+  number  = {61},
+  pages   = {2121--2159},
+  url     = {http://jmlr.org/papers/v12/duchi11a.html}
+}
+
+@book{Bishop-2006,
+    author = {Bishop, Christopher M.},
+    title = {Pattern Recognition and Machine Learning (Information Science and Statistics)},
+    year = {2006},
+    isbn = {0387310738},
+    publisher = {Springer-Verlag},
+    address = {Berlin, Heidelberg}
+}
+
+@Article{FCPS,
+    title = {Fundamental clustering algorithms suite},
+    author = {{Michael Christoph} and Quirin Stier},
+    publisher = {Elsevier},
+    journal = {SoftwareX},
+    volume = {13},
+    pages = {100642},
+    year = {2021},
+    issn = {2352-7110},
+    doi = {10.1016/j.softx.2020.100642},
+    url = {https://doi.org/10.3390/pr9101697},
+  }

@@ -17,7 +17,7 @@ generate_mixture <- function(n, props, means, vars, seed=923){
         samp <- c(samp, rnorm(sizes[i], mean=means[i], sd=sqrt(vars[i])))
     }
 
-    return(samp)
+    return(list(samp=samp, sizes=sizes))
 }
 
 #' Complete Joint Log-Likelihood For Naive and JS+ Estimator
@@ -70,7 +70,7 @@ logp.mu <- function(y, z, mu, mu0 = 0, tausq = 1, sigsq = 1, phi0 = rep(1/length
         }
 
         .loglik <- term1
-        .logprior <- log(1/sqrt(2 * pi * tausq)) - (mu[j] - m[j])^2 / (2 * tausq)
+        .logprior <- log(1/sqrt(2 * pi * tausq)) - (mu[j] - mu0[j])^2 / (2 * tausq)
 
         return(.loglik + .logprior)
     })
@@ -477,7 +477,9 @@ simplemix.bbvi <- function(data, K, priors = list(), maxiter=100, init=NULL, lea
         elbolist[[t]] <- data.frame(iter=t, elbo=samps$ELBO)
 
         #G <- G + elbo %*% t(elbo) # for AdaGrad
-        G <- beta * G + (1 - beta) * (elbo %*% t(elbo)) # for AdaGrad
+        if(  is.null(beta)) G <- G + elbo %*% t(elbo) # for AdaGrad
+        if(! is.null(beta)) G <- beta * G + (1 - beta) * (elbo %*% t(elbo)) # for RMSProp
+        
 
         new.params <- old.params + learn_rate(t, G) * elbo
         params[,-1] <- as.matrix(new.params, nrow = (length(data) + 2), ncol = (ncol(params) - 1))
