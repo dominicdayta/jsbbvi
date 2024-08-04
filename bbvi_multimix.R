@@ -1,4 +1,31 @@
 require(mvtnorm)
+require(randtoolbox)
+require(distr)
+require(LaplacesDemon)
+
+#' Random Sample Generation
+#'
+#' @param n Size of mixture sample to be generated
+#' @param props An array of K mixing proportions per component, can be unnormalized
+#' @param means a list of p-dimensional vectors of the means
+#' @param covars a list of pxp covariance matrices
+#' @param seed Random seed (defaults to 923)
+#' 
+#' @return An array of n observations corresponding to the Gaussian mixture distribution
+generate_mixture <- function(n, props, means, covars, seed=923){
+    set.seed(seed)
+    props <- props/sum(props)
+    sizes <- round(n * props, 0)
+    
+    samp <- NULL
+    cls <- NULL
+    for(i in seq_along(sizes)){
+        cls <- c(cls,rep(i, times = sizes[i]))
+        samp <- rbind(samp, rmvnorm(sizes[i], mean=means[[i]], sigma=covars[[i]]))
+    }
+
+    return(list(samp=samp, sizes=sizes, Cls = cls))
+}
 
 #' Cartesian Product of Indices
 #' 
@@ -46,7 +73,7 @@ unpack_priors <- function(priors, K, p, N){
     return(priors)
 }
 
-#' Fit a Multivariate Mixture of Gaussian Using  BBVI
+#' Fit a Multivariate Mixture of Gaussian Using BBVI
 #' 
 #' Fits a set of K (pre-specified) components each a p-dimensional Gaussian distribution to a dataset.
 #' The method used Black Box Variational Inference using either its Naive, Rao-Blackwellized, or James-Stein
@@ -94,7 +121,7 @@ bbvi_multimix <- function(data, clusters = 2, method = "Naive", learn_rate = rat
     # - setting m to a random location on the dataset
     # - setting ssq to 1 for all
     # - setting 1/K for all rows of data
-    set.seed(seed)
+    set.seed(923)
     init_locs <- as.matrix(data[sample(1:N, size = K), ])
 
     params <- list(max_iter)
@@ -113,6 +140,7 @@ bbvi_multimix <- function(data, clusters = 2, method = "Naive", learn_rate = rat
     converged <- FALSE
     start.time <- Sys.time()
 
+    set.seed(seed)
     for(t in 2:max_iter){
         old.params <- params[[t - 1]]
 
@@ -158,7 +186,7 @@ bbvi_multimix <- function(data, clusters = 2, method = "Naive", learn_rate = rat
         DIC <- -2 * bayesLik + pDIC
 
         params[[t]] <- new.params
-        elbo[[t-1]] <- data.frame(iter = t, elapsed = difftime(start.time, Sys.time(), units = "secs"), elbo = samps$ELBO,
+        elbo[[t-1]] <- data.frame(iter = t, elapsed = difftime(Sys.time(), start.time, units = "secs"), elbo = samps$ELBO,
                                     bayesLikelihood = bayesLik, simLikelihood = samps$simLikelihood, elpd = elpd, DIC = DIC)
         steps[[t-1]] <- updates
 
@@ -182,7 +210,7 @@ bbvi_multimix <- function(data, clusters = 2, method = "Naive", learn_rate = rat
             break
         }
 
-        if(verbose) message(paste0("BBVI-",method,": Iteration ", t,
+        if(t%%100 == 0 & verbose) message(paste0("BBVI-",method,": Iteration ", t,
                                                     " | lambda: ", round(lambda, 4),
                                                     " | ELBO: ", round(samps$ELBO,2),
                                                     " | ELBO Change: ", round(elbo.chg, 4)))
@@ -200,7 +228,334 @@ bbvi_multimix <- function(data, clusters = 2, method = "Naive", learn_rate = rat
         updates = steplist,
         iterations = t,
         converged = converged,
-        elapsed.time = difftime(start.time, Sys.time(), units = "secs"),
+        elapsed.time = difftime(Sys.time(), start.time, units = "secs"),
+        N = N,
+        K = K,
+        p = p,
+        data = data,
+        method = method
+    ))
+}
+
+#' Fit a Multivariate Mixture of Gaussians Using QMC-BBVI
+#' 
+#' Fits a set of K (pre-specified) components each a p-dimensional Gaussian distribution to a dataset.
+#' The method used Black Box Variational Inference using either its Naive, Rao-Blackwellized, or James-Stein
+#' flavor.
+#'
+#' @param data an N x p matrix of observations
+#' @param clusters the number K of components
+#' @param method the flavor of BBVI to use in model fitting. Can be one of method = c("Naive","RB","JS+") for
+#' the Naive, Rao-Blackwellized, and James-Stein flavor, respectively. Defaults to method = "Naive"
+#' @param learn_rate the learning rate to use for the stochastic optimization. Can be rate_constant(rho) for a
+#' certain value of rho, rate_adagrad(eta) for a value of eta to use the AdaGrad method, and rate_rmsprop(eta, beta)
+#' for the RMSProp modification of AdaGrad. Defaults to rate_constant(1e-3)
+#' @param max_iter the total number of iterations to stop the method in case of non-convergence
+#' @param min_iter the minimum number of iterations to perform before convergence is assessed
+#' @param mc_size the number S of monte carlo samples to draw for generating the BBVI Update steps
+#' @param priors a list of prior specifications, defaults to standard priors if priors = NULL.
+#' @param converge the convergence threshold delta
+#' @param criterion the criterion in which to test for convergence, can be one of criterion = c("param","elbo").
+#' @param var_threshold the lower and upper threshold on the variance, defaults to var_threshold = c(0.01, 1e3).
+#' @param verbose logical, a switch for whether a verbose execution should be done.
+#' @param seed the seed to use for starting the random samples
+#' 
+#' @return An updated list of prior specifications, completed in case of missing priors
+qmcvi_multimix <- function(data, clusters = 2, method = "Naive", learn_rate = rate_constant(), mc_size = 1000, max_iter = 1000, min_iter = 1, priors = NULL, seed = 923,
+                            converge = 1e-4, crit = "param", var_threshold = c(0.01, 1e3), verbose = FALSE){
+    p <- ncol(data) # number of components in the data
+    N <- nrow(data) # number of rows in the data
+    K <- clusters
+
+    priors <- unpack_priors(priors, K, p, N)
+
+    seq_K <- 1:K
+    seq_p <- 1:p
+    seq_N <- 1:N
+
+    # the total number of parameters given by the following:
+    # - K x p mean parameters m_k
+    # - K x p (diagonal) variance matrix parameters S_k
+    # - N x K mixture probabilities per observation of data
+    mean_params <- paste0("m_", cartesian_index(seq_K, seq_p))
+    var_params  <- paste0("ssq_", cartesian_index(seq_K, seq_p))
+    prob_params <- paste0("phi_", cartesian_index(seq_N, seq_K))
+
+    # initialize these variables
+    # - setting m to a random location on the dataset
+    # - setting ssq to 1 for all
+    # - setting 1/K for all rows of data
+    set.seed(923)
+    init_locs <- as.matrix(data[sample(1:N, size = K), ])
+
+    params <- list(max_iter)
+    elbo <- list(max_iter - 1)
+    steps <- list(max_iter - 1)
+
+    params[[1]] <- data.frame(t(c(
+        as.vector(init_locs),
+        rep(1, times = length(var_params)),
+        rep(1/K, times = length(prob_params))
+    )))
+
+    param_names <- c(mean_params, var_params, prob_params)
+    colnames(params[[1]]) <- param_names
+    G <- 0
+    converged <- FALSE
+    start.time <- Sys.time()
+
+    set.seed(seed)
+    for(t in 2:max_iter){
+        old.params <- params[[t - 1]]
+
+        samps <- generate_qmc_samples(mc_size, data, K, old.params, priors, method)
+        updates <- generate_bbvi(samps)
+        
+        updater <- learn_rate(t, old = old.params, step = updates, G)
+        new.params <- updater$new
+        G <- updater$G
+
+        # hard thresholding on ssq
+        for(j in which(grepl("ssq_", param_names, fixed = TRUE))){
+            if(new.params[1,j] < var_threshold[1]) new.params[1,j] <- var_threshold[1]
+            if(new.params[1,j] > var_threshold[2]) new.params[1,j] <- var_threshold[2]
+        }
+        
+
+        # normalizing phi
+        mu.new <- as.numeric(new.params[1, grepl("m_", param_names, fixed = TRUE)])
+        mu.new <- matrix(mu.new, nrow = K, ncol = p, byrow = FALSE)
+
+        phi.new <- as.numeric(new.params[1,grepl("phi_", param_names, fixed = TRUE)])
+        phi.new <- matrix(phi.new, nrow = N, ncol = K, byrow = FALSE)
+        
+        for(i in 1:N){
+            probs <- sapply(as.numeric(phi.new[i,]), function(x){
+                if(x < 0.01) return(0.01)
+                if(is.na(x) || is.infinite(x) || is.nan(x)) return(0.01)
+                return(x)
+            })
+            total_prob <- sum(probs, na.rm = TRUE)
+            phi.new[i,] <- probs/total_prob
+            
+        }
+
+        new.params[1, grepl("phi_", param_names, fixed = TRUE)] <- as.vector(phi.new)
+
+        bayesLik <- bayes.logLik(data, mu.new, phi.new, priors)
+        pDIC <- 2 * (bayesLik - samps$simLikelihood)
+        elpd <- bayesLik - pDIC
+        DIC <- -2 * bayesLik + pDIC
+
+        params[[t]] <- new.params
+        elbo[[t-1]] <- data.frame(iter = t, elapsed = difftime(Sys.time(), start.time, units = "secs"), elbo = samps$ELBO,
+                                    bayesLikelihood = bayesLik, simLikelihood = samps$simLikelihood, elpd = elpd, DIC = DIC)
+        steps[[t-1]] <- updates
+
+        # check for convergence
+        if (t > 2){
+            elbo.chg <- log(abs(samps$ELBO/elbo[[t-1]]$elbo[1]))
+        }else{
+            elbo.chg <- 1.0000
+        }
+        
+        norm_old <- sum(old.params[1,]^2)
+        norm_chg <- sum((new.params[1,] - old.params[1,])^2)
+        lambda <- sqrt(norm_chg)/sqrt(norm_old)
+
+        if((t > min_iter & crit == "param" & lambda < converge) | (t > min_iter & crit == "elbo" & elbo.chg < converge)){
+            message(paste0("Algorithm converged after ", t, " iterations."))
+            converged <- TRUE
+            params[(t+1):max_iter] <- NULL
+            elbo[t:(max_iter - 1)] <- NULL
+            steps[t:(max_iter - 1)] <- NULL
+            break
+        }
+
+        if(t%%100 == 0 & verbose) message(paste0("QMCVI-",method,": Iteration ", t,
+                                                    " | lambda: ", round(lambda, 4),
+                                                    " | ELBO: ", round(samps$ELBO,2),
+                                                    " | ELBO Change: ", round(elbo.chg, 4)))
+    }
+
+    if(! converged) message(paste0("Algorithm did not converge after ", t, " steps. Results may not be reliable."))
+    
+    paramlist <- do.call('rbind', params)
+    elbolist <- do.call('rbind', elbo)
+    steplist <- do.call('rbind', steps)
+
+    return(list(
+        trace = paramlist,
+        elbo = elbolist,
+        updates = steplist,
+        iterations = t,
+        converged = converged,
+        elapsed.time = difftime(Sys.time(), start.time, units = "secs"),
+        N = N,
+        K = K,
+        p = p,
+        data = data,
+        method = method
+    ))
+}
+
+#' Fit a Multivariate Mixture of Gaussian Using YOASOVI
+#' 
+#' Fits a set of K (pre-specified) components each a p-dimensional Gaussian distribution to a dataset.
+#' The method uses the Naive and Rao-Blackwellized methods only.
+#'
+#' @param data an N x p matrix of observations
+#' @param clusters the number K of components
+#' @param method the flavor of BBVI to use in model fitting. Can be one of method = c("Naive","RB","JS+") for
+#' the Naive, Rao-Blackwellized, and James-Stein flavor, respectively. Defaults to method = "Naive"
+#' @param learn_rate the learning rate to use for the stochastic optimization. Can be rate_constant(rho) for a
+#' certain value of rho, rate_adagrad(eta) for a value of eta to use the AdaGrad method, and rate_rmsprop(eta, beta)
+#' for the RMSProp modification of AdaGrad. Defaults to rate_constant(1e-3)
+#' @param max_iter the total number of iterations to stop the method in case of non-convergence
+#' @param min_iter the minimum number of iterations to perform before convergence is assessed
+#' @param mc_size the number S of monte carlo samples to draw for generating the BBVI Update steps
+#' @param priors a list of prior specifications, defaults to standard priors if priors = NULL.
+#' @param converge the convergence threshold delta
+#' @param criterion the criterion in which to test for convergence, can be one of criterion = c("param","elbo").
+#' @param var_threshold the lower and upper threshold on the variance, defaults to var_threshold = c(0.01, 1e3).
+#' @param verbose logical, a switch for whether a verbose execution should be done.
+#' @param seed the seed to use for starting the random samples
+#' 
+#' @return An updated list of prior specifications, completed in case of missing priors
+yoasovi_multimix <- function(data, clusters = 2, method = "Naive", learn_rate = rate_constant(), mc_size = 1, max_iter = 1000, min_iter = 1, priors = NULL, seed = 923,
+                            patience = 100, crit = "param", var_threshold = c(0.01, 1e3), seed_init = 923, verbose = FALSE){
+    p <- ncol(data) # number of components in the data
+    N <- nrow(data) # number of rows in the data
+    K <- clusters
+
+    priors <- unpack_priors(priors, K, p, N)
+
+    seq_K <- 1:K
+    seq_p <- 1:p
+    seq_N <- 1:N
+
+    # the total number of parameters given by the following:
+    # - K x p mean parameters m_k
+    # - K x p (diagonal) variance matrix parameters S_k
+    # - N x K mixture probabilities per observation of data
+    mean_params <- paste0("m_", cartesian_index(seq_K, seq_p))
+    var_params  <- paste0("ssq_", cartesian_index(seq_K, seq_p))
+    prob_params <- paste0("phi_", cartesian_index(seq_N, seq_K))
+
+    # initialize these variables
+    # - setting m to a random location on the dataset
+    # - setting ssq to 1 for all
+    # - setting 1/K for all rows of data
+    set.seed(seed_init)
+    init_locs <- as.matrix(data[sample(1:N, size = K), ])
+
+    params <- list(max_iter)
+    elbo <- list(max_iter - 1)
+    steps <- list(max_iter - 1)
+
+    params[[1]] <- data.frame(t(c(
+        as.vector(init_locs),
+        rep(1, times = length(var_params)),
+        rep(1/K, times = length(prob_params))
+    )))
+
+    param_names <- c(mean_params, var_params, prob_params)
+    colnames(params[[1]]) <- param_names
+    G <- 0
+    converged <- FALSE
+    start.time <- Sys.time()
+    num_rejected <- 0
+
+    set.seed(seed)
+    for(t in 2:max_iter){
+        old.params <- params[[t - 1]]
+        ELBO.Prev <- ifelse(t > 3, elbo[[t - 2]]$elbo, -9e6)
+
+        samps <- generate_reject_samples(mc_size, ELBO.Prev, tempered = t, data, K, old.params, priors, method)
+
+        if(t <= 2 | samps$accept){
+            updates <- generate_bbvi(samps)
+            updater <- learn_rate(t, old = old.params, step = updates, G)
+            new.params <- updater$new
+            G <- updater$G
+
+            # hard thresholding on ssq
+            for(j in which(grepl("ssq_", param_names, fixed = TRUE))){
+                if(new.params[1,j] < var_threshold[1]) new.params[1,j] <- var_threshold[1]
+                if(new.params[1,j] > var_threshold[2]) new.params[1,j] <- var_threshold[2]
+            }
+            
+            # normalizing phi
+            mu.new <- as.numeric(new.params[1, grepl("m_", param_names, fixed = TRUE)])
+            mu.new <- matrix(mu.new, nrow = K, ncol = p, byrow = FALSE)
+
+            phi.new <- as.numeric(new.params[1,grepl("phi_", param_names, fixed = TRUE)])
+            phi.new <- matrix(phi.new, nrow = N, ncol = K, byrow = FALSE)
+            
+            for(i in 1:N){
+                probs <- sapply(as.numeric(phi.new[i,]), function(x){
+                    if(x < 0.01) return(0.01)
+                    if(is.na(x) || is.infinite(x) || is.nan(x)) return(0.01)
+                    return(x)
+                })
+                total_prob <- sum(probs, na.rm = TRUE)
+                phi.new[i,] <- probs/total_prob
+                
+            }
+
+            new.params[1, grepl("phi_", param_names, fixed = TRUE)] <- as.vector(phi.new)
+
+            bayesLik <- bayes.logLik(data, mu.new, phi.new, priors)
+            pDIC <- 2 * (bayesLik - samps$simLikelihood)
+            elpd <- bayesLik - pDIC
+            DIC <- -2 * bayesLik + pDIC
+
+            params[[t]] <- new.params
+            elbo[[t-1]] <- data.frame(iter = t, elapsed = difftime(Sys.time(), start.time, units = "secs"), probaccept = samps$probaccept, elbo = samps$ELBO,
+                                        bayesLikelihood = bayesLik, simLikelihood = samps$simLikelihood, elpd = elpd, DIC = DIC)
+            steps[[t-1]] <- updates
+            num_rejected <- 0
+
+        }else{
+            retain.params <- params[[t - 1]]
+            retain.elbo <- elbo[[t - 2]]
+            retain.steps <- steps[[t - 2]]
+
+            retain.elbo$iter = t
+
+            params[[t]] <- retain.params
+            elbo[[t-1]] <- retain.elbo
+            steps[[t-1]] <- retain.steps
+            num_rejected <- num_rejected + 1
+
+        }
+
+        if(t > min_iter & num_rejected >= patience){
+            message(paste0("Algorithm converged after ", t, " iterations."))
+            converged <- TRUE
+            params[(t+1):max_iter] <- NULL
+            elbo[t:(max_iter - 1)] <- NULL
+            steps[t:(max_iter - 1)] <- NULL
+            break
+        }
+        
+
+        if(t%%100 == 0 & verbose) message(paste0("YOASOVI-",method,": Iteration ", t, " | ELBO: ", round(elbo[[t-1]]$elbo,2)))
+    }
+
+    if(! converged) message(paste0("Algorithm did not converge after ", t, " steps. Results may not be reliable."))
+    
+    paramlist <- do.call('rbind', params)
+    elbolist <- do.call('rbind', elbo)
+    steplist <- do.call('rbind', steps)
+
+    return(list(
+        trace = paramlist,
+        elbo = elbolist,
+        updates = steplist,
+        iterations = t,
+        converged = converged,
+        elapsed.time = difftime(Sys.time(), start.time, units = "secs"),
         N = N,
         K = K,
         p = p,
@@ -590,6 +945,187 @@ generate_samples <- function(S = 1000, data, K, params, priors, method="Naive"){
     return(list_data)
 }
 
+owen_scramble <- function(seq) {
+  n <- length(seq)
+  for (i in 1:n) {
+    seq[i] <- seq[i] ^ runif(1)
+  }
+  return(seq)
+}
+
+#' Draw Quasi-Monte Carlo Samples of the ELBO Gradient
+#'
+#' @param S Number of Monte Carlo samples to draw, defaults to S = 1000
+#' @param y The set of observations
+#' @param phi An N x K matrix of cluster probabilities such that z \sim q(phi)
+#' @param m An array of K posterior means such that mu \sim q(m, ssq)
+#' @param ssq An array of K posterior variances such that mu \sim q(m, ssq)
+#' @param mu0 The prior mean for each mu \sim N(mu0, tausq), defaults to 0
+#' @param tausq The prior variance for each mu \sim N(mu0, tausq), defaults to 1
+#' @param sigsq The data variance for each y \sim N(zi^T mu, sigsq), defaults to 1
+#' @param phi0 The prior probabilities for zi, zi \sim Categorical(phi0), defaults to 1/K
+#' @param method Which type of ELBO estimator to use, method = c("Naive","JS+","RB","RB+")
+#' 
+#' @return S samples from the corresponding mean-field variational approximations
+generate_qmc_samples <- function(S = 1000, data, K, params, priors, method="Naive"){
+    N <- nrow(data)
+    p <- ncol(data)
+
+    this.params <- unpack_parameters(params, N, K, p)
+    phi <- this.params$phi
+    m <- this.params$m
+    ssq <- this.params$ssq
+
+    elbograd <- list(S)
+    ELBO <- list(S)
+    likelihoods <- list(S)
+
+    # the maximum dimension needed for a Sobol sequence is length(mean)
+    sobol_norms <- sobol(S, dim = ncol(m))
+    sobol_norms <- apply(sobol_norms, 2, owen_scramble)
+
+    sobol_multinoms <- sobol(S, dim = ncol(phi))
+    sobol_multinoms <- apply(sobol_multinoms, 2, owen_scramble)
+   
+
+    for(s in 1:S){
+        # draw samples
+        z <- t(sapply(1:nrow(phi), function(i){
+            qmc_rmultinom(1,1,prob = phi[i,], sobol_samples = sobol_multinoms[s,])
+        }))
+
+        mu <- t(sapply(1:K, function(k){
+            qmc_rmvnorm(1, mean = m[k,], sigma = ssq[[k]], sobol_samples = matrix(sobol_norms[s,], nrow = 1))
+        }))
+
+        # compute current ELBO
+        ELBO[[s]] <- logp.all(data, z, mu, priors) - logq.all(z, mu, phi, m, ssq)
+
+        # compute the simulated likelihood
+        likelihoods[[s]] <- sim.logLik(data, mu, z, priors)
+
+        # compute ELBO gradient
+        if(method %in% c("Naive","JS","JS+")){
+            grad <- c(
+                as.vector(grad.mu_m(mu, m, ssq)),
+                as.vector(grad.mu_ssq(mu, m, ssq)),
+                as.vector(grad.z(z, phi))
+            )
+
+            diff <- rep(logp.all(data, z, mu, priors) - logq.all(z, mu, phi, m, ssq),
+                times = length(grad))
+
+            elbograd[[s]] <- grad * diff
+
+        }else{
+            elbo.mu_m <- as.vector(grad.mu_m(mu, m, ssq)) * (as.vector(logp.mu(data, z, mu, priors)) - as.vector(logq.mu(z, mu, phi, m, ssq)))
+            elbo.mu_ssq <- as.vector(grad.mu_ssq(mu, m, ssq)) *
+                (rep(as.vector(logp.mu(data, z, mu, priors)), times = p) - rep(as.vector(logq.mu(z, mu, phi, m, ssq)), times = p))
+            elbo.z <- as.vector(grad.z(z, phi)) *
+                (rep(logp.z(data, z, mu, priors), times = K) - rep(logq.z(z, mu, phi, m, ssq), times = K))
+            elbograd[[s]] <- c(elbo.mu_m, elbo.mu_ssq, elbo.z)
+
+        }
+
+    }
+
+    ELBO <- do.call('rbind', ELBO)
+    elbograd <- do.call('rbind', elbograd)
+    likelihoods <- do.call('rbind', likelihoods)
+    
+    list_data <- list(Z = elbograd, ELBO = mean(ELBO), simLikelihood = mean(likelihoods), S = S, method=method)
+    return(list_data)
+}
+
+#' Perform Rejection Sampling With A Single Sample
+#'
+#' @param ELBO.Prev Previous ELBO Value
+#' @param data The set of observations
+#' @param K The number of clusters in the multivariate normal mixture
+#' @param params The list of parameters drawn
+#' @param priors The list of priors set for the mixture
+#' @param method Which type of ELBO estimator to use, method = c("Naive","JS+","RB","RB+")
+#' 
+#' @return S samples from the corresponding mean-field variational approximations
+generate_reject_samples <- function(S = 10, ELBO.Prev, tempered = 10, data, K, params, priors, method="Naive"){
+    N <- nrow(data)
+    p <- ncol(data)
+
+    this.params <- unpack_parameters(params, N, K, p)
+    phi <- this.params$phi
+    m <- this.params$m
+    ssq <- this.params$ssq
+
+    elbograd <- list()
+    ELBO <- list()
+    likelihoods <- list()
+    num_accept <- 0
+
+    for(s in 1:S){
+        # draw samples
+        z <- t(sapply(1:nrow(phi), function(i){
+            rmultinom(1,1,prob = phi[i,])
+        }))
+
+        mu <- t(sapply(1:K, function(k){
+            rmvnorm(1, mean = m[k,], sigma = ssq[[k]])
+        }))
+
+        # compute current ELBO
+        ELBO.New <- logp.all(data, z, mu, priors) - logq.all(z, mu, phi, m, ssq)
+
+        # compute the simulated likelihood
+        Lik.New <- sim.logLik(data, mu, z, priors)
+
+        # compute ELBO gradient
+        if(method %in% c("Naive","JS","JS+")){
+            grad <- c(
+                as.vector(grad.mu_m(mu, m, ssq)),
+                as.vector(grad.mu_ssq(mu, m, ssq)),
+                as.vector(grad.z(z, phi))
+            )
+
+            diff <- rep(logp.all(data, z, mu, priors) - logq.all(z, mu, phi, m, ssq),
+                times = length(grad))
+
+            elbograd.new <- grad * diff
+
+        }else{
+            elbo.mu_m <- as.vector(grad.mu_m(mu, m, ssq)) * (as.vector(logp.mu(data, z, mu, priors)) - as.vector(logq.mu(z, mu, phi, m, ssq)))
+            elbo.mu_ssq <- as.vector(grad.mu_ssq(mu, m, ssq)) *
+                (rep(as.vector(logp.mu(data, z, mu, priors)), times = p) - rep(as.vector(logq.mu(z, mu, phi, m, ssq)), times = p))
+            elbo.z <- as.vector(grad.z(z, phi)) *
+                (rep(logp.z(data, z, mu, priors), times = K) - rep(logq.z(z, mu, phi, m, ssq), times = K))
+            elbograd.new <- c(elbo.mu_m, elbo.mu_ssq, elbo.z)
+
+        }
+
+        elbograd.new <- matrix(elbograd.new, nrow = 1, ncol = length(elbograd.new))
+
+        probaccept <- min(1, 1 + (abs(ELBO.Prev) - abs(ELBO.New)) * 3 * log(tempered) /(abs(ELBO.Prev)))
+        if(runif(1) < probaccept){
+            num_accept <- num_accept + 1
+            ELBO[[length(ELBO) + 1]] <- ELBO.New
+            likelihoods[[length(likelihoods) + 1]] <- Lik.New
+            elbograd[[length(elbograd) + 1]] <- elbograd.new
+        }else if(s == 1){
+            # guarantees there is at least one element even if not accepted
+            # for error catching
+            ELBO[[length(ELBO) + 1]] <- ELBO.New
+            likelihoods[[length(likelihoods) + 1]] <- Lik.New
+            elbograd[[length(elbograd) + 1]] <- elbograd.new
+        }
+    }
+
+    accept = ifelse(num_accept > 0, TRUE, FALSE)
+    ELBO <- do.call('rbind', ELBO)
+    elbograd <- do.call('rbind', elbograd)
+    likelihoods <- do.call('rbind', likelihoods)
+    
+    list_data <- list(accept = accept, probaccept = probaccept, Z = elbograd, ELBO = mean(ELBO), simLikelihood = mean(likelihoods), S = S, method=method)
+    return(list_data)
+}
+
 #' Generate the BBVI Update Steps
 #'
 #' @param dat The generated samples drawn from `generate_samples`
@@ -599,11 +1135,6 @@ generate_bbvi <- function(dat, method = NULL){
     if(is.null(method)) method = dat$method
     Z = dat$Z
     S = dat$S
-    
-    # Estimate the variance
-    var_index <- sample(1:S, size=round(S/3), replace=TRUE)
-    var_samples <- Z[var_index, ]
-    variances <- apply(var_samples, 2, var)
 
     # Now estimate the mean
     means <- apply(Z, 2, mean)
@@ -611,6 +1142,11 @@ generate_bbvi <- function(dat, method = NULL){
     m = length(means) - 1
 
     if(method %in% c("JS+","RB+")){
+        # Estimate the variance
+        var_index <- sample(1:S, size=round(S/3), replace=TRUE)
+        var_samples <- Z[var_index, ]
+        variances <- apply(var_samples, 2, var)
+        
         means <- positive(1 - ((m - 3) * variances)/norm_est) * means
     }
 
@@ -683,7 +1219,7 @@ rate_rmsprop <- function(eta = 1, beta = 0.9, ...){
 #' 
 #' @return Plots the scatter of observations, with a super-imposed contour plot of the
 #' resulting densities of the mixing distributions.
-plot_multimix <- function(bbvi){
+plot_multimix <- function(bbvi, contours = TRUE, colors=c("black","red"), add = FALSE){
     N <- bbvi$N 
     K <- bbvi$K 
     p <- bbvi$p
@@ -696,15 +1232,23 @@ plot_multimix <- function(bbvi){
     x <- seq(from = min(bbvi$data[,1]), to = max(bbvi$data[,1]), length = 100)
     y <- seq(from = min(bbvi$data[,2]), to = max(bbvi$data[,2]), length = 100)
 
-    par(bg = "white")
-    plot(bbvi$data)
-    for(k in 1:K){
-        mu <- as.numeric(this.params$m[k,])
-        sigma <- this.params$ssq[[k]]
-        f <- function(x, y) dmvnorm(cbind(x, y), mu, sigma)
-        z <- outer(x, y, f)
-        contour(x, y, z, add = TRUE, col = "red")
+    if(! add){
+        par(bg = "white")
+        plot(bbvi$data, col = colors[1])
     }
+
+    if(contours){
+        for(k in 1:K){
+            mu <- as.numeric(this.params$m[k,])
+            sigma <- this.params$ssq[[k]]
+            f <- function(x, y) dmvnorm(cbind(x, y), mu, sigma)
+            z <- outer(x, y, f)
+            contour(x, y, z, add = TRUE, col = colors[2])
+        }
+    }
+
+    points(this.params$m, pch="+", cex=2, col = colors[2])
+    return(this.params$m)
 }
 
 #' Summary Mixtures of the BBVI Results
@@ -799,4 +1343,70 @@ bayes.logLik <- function(data, mu, phi, priors){
     }
 
     return(logp)
+}
+
+#' Quasi-Monte Carlo Random Samples From the (Univariate) Normal Distribution
+#'
+#' @param n The number of QMC samples to generate
+#' @param mean The mean of the normal distribution
+#' @param sd The standard deviation of the normal distribution
+#' 
+#' @return A vector of length n samples from the normal distribution
+qmc_rnorm <- function(n, mean, sd){
+ sobol_samples <- sobol(n, dim = 1)
+ normal_samples <- qnorm(sobol_samples, mean = mean, sd = sd)
+ return(normal_samples)
+}
+
+#' Quasi-Monte Carlo Random Samples From the (Multivariate) Normal Distribution
+#'
+#' @param n The number of QMC samples to generate
+#' @param mean A p-size vector of means of the normal distribution
+#' @param sigma A pxp covariance matrix for the normal distribution
+#' 
+#' @return A vector of length n samples from the normal distribution
+qmc_rmvnorm <- function(n, mean, sigma, sobol_samples = NULL){
+  Sig <- chol(sigma)
+
+  if(is.null(sobol_samples)){
+    sobol_samples <- sobol(n, dim = length(mean))
+  }
+  
+  mvtsamp <- t(sapply(1:n, function(i){
+    as.numeric(qnorm(sobol_samples[i,]) %*% Sig) + mean
+  }))
+  
+  return(mvtsamp)
+}
+
+#' Quasi-Monte Carlo Random Samples From The Multinomial Distribution
+#'
+#' @param n The number of QMC samples to generate
+#' @param size The number of N objects to place into K boxes
+#' @param prob The probability for each of the K boxes
+#' 
+#' @return A vector of length n samples from the multinomial distribution
+qmc_rmultinom <- function(n, size, prob, sobol_samples = NULL) {
+  k <- length(prob)
+  prob <- prob/sum(prob)
+  multinom_samples <- matrix(0, nrow = n, ncol = k)
+  
+  if(is.null(sobol_samples)){
+    sobol_samples <- sobol(n * length(prob), dim = 1)
+  }
+  
+  for (i in 1:n) {
+    cum_prob <- cumsum(prob)
+    u <- sobol_samples[(i - 1) * k + 1:i * k]
+    counts <- numeric(k)
+    
+    for (j in 1:size) {
+      sample_index <- min(which(u[j] <= cum_prob))
+      counts[sample_index] <- counts[sample_index] + 1
+    }
+    
+    multinom_samples[i, ] <- counts
+  }
+  
+  return(multinom_samples)
 }
