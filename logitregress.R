@@ -11,16 +11,27 @@ require(pROC)
 #' @param seed Random seed (defaults to 923)
 #' 
 #' @return An array of n observations corresponding to the Gaussian mixture distribution
-generate_mixture <- function(n, beta_coeff, means = NULL, seed=923){
+generate_logit <- function(n, beta_coeff, means = NULL, vars = NULL, seed=923){
     set.seed(seed)
     p <- length(beta_coeff) - 1
 
     if(is.null(means)) means <- rnorm(p, 0, sd = 1)
-    vars <- diag(1/rgamma(p, 3, 4), nrow = p, ncol = p)
+    if(is.null(vars)){
+        vars <- diag(1/rgamma(p, 3, 4), nrow = p, ncol = p)
+
+    }else{
+        vars <- diag(vars, nrow = p, ncol = p)
+    }
+
     X <- rmvnorm(n, mean = means, sigma = vars)
     X <- cbind(X0 = rep(1, times = n), X)
     
     y <- 1/(1 + exp(- X %*% beta_coeff))
+    y <- ifelse(y > 1 - (1e-3), 1 - (1e-3), y)
+    y <- ifelse(y < 1e-3, 1e-3, y)
+    y <- ifelse(is.na(y), 1e-3, y)
+    y <- ifelse(is.nan(y), 1e-3, y)
+    y <- ifelse(is.infinite(y), 1 - (1e-3), y)
     t <- sapply(y, function(x){
         rbinom(1, size = 1, prob = x)
     })
@@ -31,7 +42,6 @@ generate_mixture <- function(n, beta_coeff, means = NULL, seed=923){
 
     return(list(samp=samp, categories=t, coeffs = beta_coeff))
 }
-
 #' Fit a Bayesian Logistic Regression Model Using BBVI
 #' 
 #' Fits a set of K (pre-specified) components each a p-dimensional Gaussian distribution to a dataset.
